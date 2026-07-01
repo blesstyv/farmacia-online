@@ -1,6 +1,4 @@
-import dotenv from "dotenv";
+import "dotenv/config";
 import app from "../src/app.js";
-
-dotenv.config();
 
 export default app;

@@ -1,10 +1,11 @@
-import dotenv from "dotenv";
+import "dotenv/config";
+import dns from "node:dns";
 import mongoose from "mongoose";
 
-dotenv.config();
+// Forzamos servidores DNS públicos para resolver correctamente registros SRV.
+// Esto ayuda cuando la red local o el proveedor bloquea o rechaza consultas DNS SRV.
+dns.setServers(["8.8.8.8", "1.1.1.1"]);
 
-// Reutiliza la conexión si ya existe.
-// Esto evita crear múltiples conexiones innecesarias.
 let cached = global.mongoose;
 
 if (!cached) {
@@ -28,13 +29,16 @@ export const connectDB = async () => {
     }
 
     if (!uri.startsWith("mongodb://") && !uri.startsWith("mongodb+srv://")) {
-      throw new Error("La URI de MongoDB debe comenzar con mongodb:// o mongodb+srv://");
+      throw new Error(
+        "La URI de MongoDB debe comenzar con mongodb:// o mongodb+srv://"
+      );
     }
 
     cached.promise =
       cached.promise ||
       mongoose.connect(uri, {
-        dbName: dbName
+        dbName,
+        serverSelectionTimeoutMS: 10000
       });
 
     cached.conn = await cached.promise;
@@ -44,6 +48,9 @@ export const connectDB = async () => {
 
     return cached.conn;
   } catch (error) {
+    cached.promise = null;
+    cached.conn = null;
+
     console.error("Error al conectar con MongoDB Atlas:", error.message);
     throw error;
   }
