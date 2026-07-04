@@ -15,3 +15,21 @@ export const getProducts = async () => {
 
   return data;
 };
+
+export const createOrder = async (orderData) => {
+  const response = await fetch(`${API_URL}/orders`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(orderData)
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "No se pudo generar el pedido");
+  }
+
+  return data;
+};

@@ -3,6 +3,7 @@ import cors from "cors";
 import healthRoutes from "./routes/health.routes.js";
 import authRoutes from "./routes/auth.routes.js";
 import productRoutes from "./routes/product.routes.js";
+import orderRoutes from "./routes/order.routes.js";
 
 const app = express();
 
@@ -39,6 +40,7 @@ app.get("/", (req, res) => {
 app.use("/api", healthRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
+app.use("/api/orders", orderRoutes);
 
 app.use((req, res) => {
   res.status(404).json({
@@ -50,14 +52,16 @@ app.use((req, res) => {
 app.use((error, req, res, next) => {
   console.error("Error:", error.message);
 
-  res.status(500).json({
+  const statusCode = error.statusCode || 500;
+
+  res.status(statusCode).json({
     ok: false,
-    message: "Error interno del servidor",
+    message:
+      statusCode === 500 ? "Error interno del servidor" : error.message,
     detail:
       process.env.NODE_ENV === "development"
         ? error.message
         : "No se pudo procesar la solicitud"
   });
 });
-
 export default app;
