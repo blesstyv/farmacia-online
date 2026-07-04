@@ -19,7 +19,6 @@ const Catalog = () => {
         setError("");
 
         const data = await getProducts();
-
         setProducts(data.products || []);
       } catch (error) {
         setError(error.message || "Error al cargar productos");
@@ -79,18 +78,26 @@ const Catalog = () => {
   }
 
   return (
-    <section>
-      <div className="section-header">
-        <h2>Catálogo de medicamentos</h2>
-        <p>
-          Productos obtenidos desde MongoDB Atlas mediante el backend de la
-          farmacia online. Venta simulada para fines académicos.
-        </p>
+    <section className="catalog-page">
+      <div className="catalog-hero">
+        <div>
+          <span className="hero-label">Medicamentos disponibles</span>
+          <h2>Catálogo de farmacia</h2>
+          <p>
+            Productos obtenidos desde MongoDB Atlas mediante el backend de la
+            farmacia online. Venta simulada para fines académicos.
+          </p>
+        </div>
+
+        <div className="catalog-summary">
+          <strong>{products.length}</strong>
+          <span>productos registrados</span>
+        </div>
       </div>
 
       {message && <p className="alert-success">{message}</p>}
 
-      <div className="filters">
+      <div className="catalog-toolbar">
         <input
           type="text"
           placeholder="Buscar medicamento..."
@@ -118,14 +125,22 @@ const Catalog = () => {
         <div className="product-grid">
           {filteredProducts.map((product) => (
             <article className="product-card" key={product._id}>
-              <img
-                src={product.imagen}
-                alt={product.nombre}
-                onError={(event) => {
-                  event.currentTarget.src =
-                    "https://placehold.co/400x300?text=Medicamento";
-                }}
-              />
+              <div className="product-image-wrapper">
+                <img
+                  src={product.imagen}
+                  alt={product.nombre}
+                  onError={(event) => {
+                    event.currentTarget.src =
+                      "https://placehold.co/400x300?text=Medicamento";
+                  }}
+                />
+
+                {product.stock > 0 ? (
+                  <span className="stock-chip available">Disponible</span>
+                ) : (
+                  <span className="stock-chip unavailable">Sin stock</span>
+                )}
+              </div>
 
               <div className="product-card-body">
                 <span className="tag">{product.categoria}</span>
@@ -134,18 +149,25 @@ const Catalog = () => {
 
                 <p>{product.descripcion}</p>
 
-                <div className="product-info">
-                  <strong>${product.precio.toLocaleString("es-CL")}</strong>
+                <div className="product-meta">
                   <span>Stock: {product.stock}</span>
+
+                  {product.requiereReceta && (
+                    <span className="recipe-chip">Requiere receta</span>
+                  )}
                 </div>
 
-                <button
-                  className="btn-primary full"
-                  onClick={() => handleAddToCart(product)}
-                  disabled={product.stock <= 0}
-                >
-                  {product.stock > 0 ? "Agregar al carrito" : "Sin stock"}
-                </button>
+                <div className="product-footer">
+                  <strong>${product.precio.toLocaleString("es-CL")}</strong>
+
+                  <button
+                    className="btn-primary"
+                    onClick={() => handleAddToCart(product)}
+                    disabled={product.stock <= 0}
+                  >
+                    Agregar
+                  </button>
+                </div>
               </div>
             </article>
           ))}
