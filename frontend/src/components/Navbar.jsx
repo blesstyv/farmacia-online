@@ -1,8 +1,16 @@
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
+import { useAuth } from "../context/AuthContext";
 
 const Navbar = () => {
+  const navigate = useNavigate();
   const { totalItems } = useCart();
+  const { user, isAuthenticated, isAdmin, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/");
+  };
 
   return (
     <header className="site-header">
@@ -23,13 +31,26 @@ const Navbar = () => {
         <div className="navbar-links">
           <NavLink to="/">Inicio</NavLink>
           <NavLink to="/catalogo">Catálogo</NavLink>
+
           <NavLink to="/carrito" className="cart-link">
             Carrito
             <span className="cart-badge">{totalItems}</span>
           </NavLink>
-          <NavLink to="/login">Login</NavLink>
-          <NavLink to="/registro">Registro</NavLink>
-          <NavLink to="/admin">Admin</NavLink>
+
+          {isAuthenticated && <NavLink to="/perfil">Mi cuenta</NavLink>}
+
+          {isAdmin && <NavLink to="/admin">Admin</NavLink>}
+
+          {!isAuthenticated ? (
+            <>
+              <NavLink to="/login">Login</NavLink>
+              <NavLink to="/registro">Registro</NavLink>
+            </>
+          ) : (
+            <button className="nav-logout" onClick={handleLogout}>
+              Salir ({user?.nombre})
+            </button>
+          )}
         </div>
       </nav>
     </header>
