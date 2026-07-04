@@ -1,17 +1,39 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
 const CartContext = createContext();
 
+const CART_STORAGE_KEY = "farmacia_online_cart";
+
+const getProductId = (product) => {
+  return product._id || product.id;
+};
+
 export const CartProvider = ({ children }) => {
-  const [cartItems, setCartItems] = useState([]);
+  const [cartItems, setCartItems] = useState(() => {
+    const savedCart = localStorage.getItem(CART_STORAGE_KEY);
+
+    if (savedCart) {
+      return JSON.parse(savedCart);
+    }
+
+    return [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartItems));
+  }, [cartItems]);
 
   const addToCart = (product) => {
-    const existingProduct = cartItems.find((item) => item.id === product.id);
+    const productId = getProductId(product);
+
+    const existingProduct = cartItems.find((item) => {
+      return getProductId(item) === productId;
+    });
 
     if (existingProduct) {
       const updatedCart = cartItems.map((item) => {
-        if (item.id === product.id) {
-          if (item.cantidad >= product.stock) {
+        if (getProductId(item) === productId) {
+          if (item.cantidad >= item.stock) {
             return item;
           }
 
@@ -28,23 +50,25 @@ export const CartProvider = ({ children }) => {
       return;
     }
 
-    setCartItems([
-      ...cartItems,
-      {
-        ...product,
-        cantidad: 1
-      }
-    ]);
+    const newItem = {
+      ...product,
+      cantidad: 1
+    };
+
+    setCartItems([...cartItems, newItem]);
   };
 
   const removeFromCart = (productId) => {
-    const updatedCart = cartItems.filter((item) => item.id !== productId);
+    const updatedCart = cartItems.filter((item) => {
+      return getProductId(item) !== productId;
+    });
+
     setCartItems(updatedCart);
   };
 
   const increaseQuantity = (productId) => {
     const updatedCart = cartItems.map((item) => {
-      if (item.id === productId) {
+      if (getProductId(item) === productId) {
         if (item.cantidad >= item.stock) {
           return item;
         }
@@ -64,7 +88,7 @@ export const CartProvider = ({ children }) => {
   const decreaseQuantity = (productId) => {
     const updatedCart = cartItems
       .map((item) => {
-        if (item.id === productId) {
+        if (getProductId(item) === productId) {
           return {
             ...item,
             cantidad: item.cantidad - 1
@@ -80,6 +104,7 @@ export const CartProvider = ({ children }) => {
 
   const clearCart = () => {
     setCartItems([]);
+    localStorage.removeItem(CART_STORAGE_KEY);
   };
 
   const totalItems = cartItems.reduce((total, item) => {
@@ -100,7 +125,8 @@ export const CartProvider = ({ children }) => {
         decreaseQuantity,
         clearCart,
         totalItems,
-        totalPrice
+        totalPrice,
+        getProductId
       }}
     >
       {children}

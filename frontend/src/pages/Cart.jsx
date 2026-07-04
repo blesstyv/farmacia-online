@@ -7,7 +7,8 @@ const Cart = () => {
     decreaseQuantity,
     removeFromCart,
     clearCart,
-    totalPrice
+    totalPrice,
+    getProductId
   } = useCart();
 
   if (cartItems.length === 0) {
@@ -23,36 +24,42 @@ const Cart = () => {
     <section>
       <div className="section-header">
         <h2>Carrito de compras</h2>
-        <p>Revisa los productos antes de generar el pedido simulado.</p>
+        <p>
+          Revisa los productos seleccionados antes de generar el pedido simulado.
+        </p>
       </div>
 
       <div className="cart-list">
-        {cartItems.map((item) => (
-          <article className="cart-item" key={item.id}>
-            <div>
-              <h3>{item.nombre}</h3>
-              <p>Precio unitario: ${item.precio.toLocaleString("es-CL")}</p>
-              <p>Stock disponible: {item.stock}</p>
-            </div>
+        {cartItems.map((item) => {
+          const productId = getProductId(item);
 
-            <div className="quantity-controls">
-              <button onClick={() => decreaseQuantity(item.id)}>-</button>
-              <span>{item.cantidad}</span>
-              <button onClick={() => increaseQuantity(item.id)}>+</button>
-            </div>
+          return (
+            <article className="cart-item" key={productId}>
+              <div>
+                <h3>{item.nombre}</h3>
+                <p>Precio unitario: ${item.precio.toLocaleString("es-CL")}</p>
+                <p>Stock disponible: {item.stock}</p>
+              </div>
 
-            <strong>
-              ${(item.precio * item.cantidad).toLocaleString("es-CL")}
-            </strong>
+              <div className="quantity-controls">
+                <button onClick={() => decreaseQuantity(productId)}>-</button>
+                <span>{item.cantidad}</span>
+                <button onClick={() => increaseQuantity(productId)}>+</button>
+              </div>
 
-            <button
-              className="btn-danger"
-              onClick={() => removeFromCart(item.id)}
-            >
-              Eliminar
-            </button>
-          </article>
-        ))}
+              <strong>
+                ${(item.precio * item.cantidad).toLocaleString("es-CL")}
+              </strong>
+
+              <button
+                className="btn-danger"
+                onClick={() => removeFromCart(productId)}
+              >
+                Eliminar
+              </button>
+            </article>
+          );
+        })}
       </div>
 
       <div className="cart-summary">
@@ -63,9 +70,7 @@ const Cart = () => {
             Vaciar carrito
           </button>
 
-          <button className="btn-primary">
-            Generar pedido simulado
-          </button>
+          <button className="btn-primary">Generar pedido simulado</button>
         </div>
       </div>
     </section>
