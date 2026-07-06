@@ -5,10 +5,11 @@
   "main": "server.js",
   "type": "module",
   "scripts": {
-  "dev": "nodemon server.js",
-  "start": "node server.js",
-  "create-admin": "node src/scripts/createAdmin.js"
-},
+    "dev": "nodemon server.js",
+    "start": "node server.js",
+    "create-admin": "node src/scripts/createAdmin.js",
+    "reset-db": "node src/scripts/resetDatabase.js"
+  },
   "keywords": [
     "node",
     "express",
