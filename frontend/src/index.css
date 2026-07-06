@@ -1035,3 +1035,183 @@ th {
     grid-template-columns: 1fr;
   }
 }
+
+.admin-page {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.admin-layout {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 22px;
+  align-items: start;
+}
+
+.admin-form-card,
+.admin-products-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: var(--shadow);
+  border: 1px solid rgba(219, 228, 234, 0.9);
+}
+
+.admin-form-card h3,
+.admin-products-card h3 {
+  margin-top: 0;
+}
+
+.admin-form-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.admin-form-card label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-weight: 900;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.admin-form-card input,
+.admin-form-card textarea {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  outline: none;
+  resize: vertical;
+}
+
+.admin-form-card input:focus,
+.admin-form-card textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(15, 143, 131, 0.12);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.checkbox-field {
+  flex-direction: row !important;
+  align-items: center;
+}
+
+.checkbox-field input {
+  width: auto;
+}
+
+.admin-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.admin-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.admin-products-table {
+  min-width: 850px;
+}
+
+.admin-products-table td strong {
+  display: block;
+  margin-bottom: 5px;
+}
+
+.admin-recipe-chip {
+  display: inline-flex;
+  width: fit-content;
+}
+
+.status-pill {
+  display: inline-flex;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.status-pill.active {
+  color: #065f46;
+  background: #d1fae5;
+}
+
+.status-pill.inactive {
+  color: #991b1b;
+  background: #fee2e2;
+}
+
+.table-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.small-btn {
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+@media (max-width: 1050px) {
+  .admin-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.admin-layout {
+  grid-template-columns: minmax(360px, 430px) minmax(0, 1fr);
+}
+
+.admin-form-card {
+  overflow: hidden;
+}
+
+.admin-form-card label {
+  min-width: 0;
+}
+
+.admin-form-card input,
+.admin-form-card textarea {
+  width: 100%;
+  min-width: 0;
+}
+
+.form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.admin-products-card {
+  min-width: 0;
+}
+
+@media (max-width: 1200px) {
+  .admin-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}

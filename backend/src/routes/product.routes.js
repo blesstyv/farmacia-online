@@ -2,6 +2,7 @@ import express from "express";
 import {
   createProduct,
   deactivateProduct,
+  getAdminProducts,
   getProductById,
   getProducts,
   updateProduct,
@@ -13,6 +14,11 @@ const router = express.Router();
 
 // Rutas públicas
 router.get("/", getProducts);
+
+// Ruta administrativa: debe ir antes de "/:id"
+router.get("/admin/all", protect, adminOnly, getAdminProducts);
+
+// Rutas públicas por ID
 router.get("/:id", getProductById);
 
 // Rutas protegidas solo para administrador

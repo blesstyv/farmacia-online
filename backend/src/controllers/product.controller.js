@@ -35,6 +35,23 @@ export const getProducts = async (req, res, next) => {
   }
 };
 
+export const getAdminProducts = async (req, res, next) => {
+  try {
+    await connectDB();
+
+    const products = await Product.find().sort({ createdAt: -1 });
+
+    res.status(200).json({
+      ok: true,
+      message: "Productos administrativos obtenidos correctamente",
+      total: products.length,
+      products
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getProductById = async (req, res, next) => {
   try {
     await connectDB();
@@ -83,14 +100,14 @@ export const createProduct = async (req, res, next) => {
       });
     }
 
-    if (precio < 0) {
+    if (Number(precio) < 0) {
       return res.status(400).json({
         ok: false,
         message: "El precio no puede ser negativo"
       });
     }
 
-    if (stock !== undefined && stock < 0) {
+    if (stock !== undefined && Number(stock) < 0) {
       return res.status(400).json({
         ok: false,
         message: "El stock no puede ser negativo"
@@ -165,14 +182,14 @@ export const updateProduct = async (req, res, next) => {
       req.body.codigo = normalizedCode;
     }
 
-    if (req.body.precio !== undefined && req.body.precio < 0) {
+    if (req.body.precio !== undefined && Number(req.body.precio) < 0) {
       return res.status(400).json({
         ok: false,
         message: "El precio no puede ser negativo"
       });
     }
 
-    if (req.body.stock !== undefined && req.body.stock < 0) {
+    if (req.body.stock !== undefined && Number(req.body.stock) < 0) {
       return res.status(400).json({
         ok: false,
         message: "El stock no puede ser negativo"
@@ -208,7 +225,7 @@ export const updateStock = async (req, res, next) => {
       });
     }
 
-    if (stock < 0) {
+    if (Number(stock) < 0) {
       return res.status(400).json({
         ok: false,
         message: "El stock no puede ser negativo"
