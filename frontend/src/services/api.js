@@ -1,4 +1,9 @@
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+//si tengo variable busque en la variable d entorno
+const baseUrl = import.meta.env.VITE_API_URL || "http://localhost";
+const port = import.meta.env.VITE_PORT || "3000";
+
+const API_URL = `${baseUrl}:${port}/api`;
+
 
 export const apiConfig = {
   API_URL
