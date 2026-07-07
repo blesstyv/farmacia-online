@@ -137,7 +137,7 @@ export const login = async (req, res, next) => {
   }
 };
 
-export const profile = async (req, res) => {
+export const getProfile = async (req, res) => {
   res.status(200).json({
     ok: true,
     message: "Perfil obtenido correctamente",
