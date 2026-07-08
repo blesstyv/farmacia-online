@@ -1,8 +1,9 @@
 //si tengo variable busque en la variable d entorno
-const baseUrl = import.meta.env.VITE_API_URL || "http://localhost";
-const port = import.meta.env.VITE_PORT || "3000";
+const baseUrl = import.meta.env.VITE_API_URL;
 
-const API_URL = `${baseUrl}:${port}/api`;
+if (!baseUrl) {
+  throw new Error("Falta configurar VITE_API_URL en Vercel.");
+}
 
 
 export const apiConfig = {

@@ -71,7 +71,7 @@ const Catalog = () => {
         <p className="alert-error">{error}</p>
         <p>
           Verifica que el backend esté ejecutándose en{" "}
-          <strong>http://localhost:3000</strong>.
+          <strong>Backend online en render</strong>.
         </p>
       </section>
     );
