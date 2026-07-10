@@ -1,6 +1,7 @@
-//si tengo variable busque en la variable d entorno
-const API_URL =
-  import.meta.env.VITE_API_URL || "https://farmacia-online-backend-tjwc.onrender.com/api";
+const API_URL = (
+  import.meta.env.VITE_API_URL ||
+  "https://farmacia-online-backend-tjwc.onrender.com/api"
+).replace(/\/$/, "");
 
 console.log("API conectada a:", API_URL);
 
@@ -23,6 +24,31 @@ const getAuthHeaders = () => {
   };
 };
 
+const handleResponse = async (response, defaultErrorMessage) => {
+  let data = null;
+
+  try {
+    data = await response.json();
+  } catch (error) {
+    data = null;
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      data?.message ||
+        data?.error ||
+        defaultErrorMessage ||
+        "Error en la solicitud al servidor"
+    );
+  }
+
+  return data;
+};
+
+// ==========================
+// AUTENTICACIÓN
+// ==========================
+
 export const registerUser = async (userData) => {
   const response = await fetch(`${API_URL}/auth/register`, {
     method: "POST",
@@ -32,13 +58,7 @@ export const registerUser = async (userData) => {
     body: JSON.stringify(userData)
   });
 
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.message || "No se pudo registrar el usuario");
-  }
-
-  return data;
+  return handleResponse(response, "Error al registrar usuario");
 };
 
 export const loginUser = async (credentials) => {
@@ -50,13 +70,7 @@ export const loginUser = async (credentials) => {
     body: JSON.stringify(credentials)
   });
 
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.message || "No se pudo iniciar sesión");
-  }
-
-  return data;
+  return handleResponse(response, "Error al iniciar sesión");
 };
 
 export const getProfile = async () => {
@@ -65,26 +79,38 @@ export const getProfile = async () => {
     headers: getAuthHeaders()
   });
 
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.message || "No se pudo obtener el perfil");
-  }
-
-  return data;
+  return handleResponse(response, "Error al obtener el perfil del usuario");
 };
+
+// ==========================
+// PRODUCTOS PÚBLICOS
+// ==========================
 
 export const getProducts = async () => {
-  const response = await fetch(`${API_URL}/products`);
+  const response = await fetch(`${API_URL}/products`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json"
+    }
+  });
 
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.message || "No se pudieron obtener los productos");
-  }
-
-  return data;
+  return handleResponse(response, "Error al obtener productos");
 };
+
+export const getProductById = async (productId) => {
+  const response = await fetch(`${API_URL}/products/${productId}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json"
+    }
+  });
+
+  return handleResponse(response, "Error al obtener el producto");
+};
+
+// ==========================
+// PRODUCTOS ADMIN
+// ==========================
 
 export const getAdminProducts = async () => {
   const response = await fetch(`${API_URL}/products/admin/all`, {
@@ -92,13 +118,10 @@ export const getAdminProducts = async () => {
     headers: getAuthHeaders()
   });
 
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.message || "No se pudieron obtener los productos del administrador");
-  }
-
-  return data;
+  return handleResponse(
+    response,
+    "Error al obtener productos del panel administrador"
+  );
 };
 
 export const createProduct = async (productData) => {
@@ -108,13 +131,7 @@ export const createProduct = async (productData) => {
     body: JSON.stringify(productData)
   });
 
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.message || "No se pudo crear el producto");
-  }
-
-  return data;
+  return handleResponse(response, "Error al crear producto");
 };
 
 export const updateProduct = async (productId, productData) => {
@@ -124,29 +141,17 @@ export const updateProduct = async (productId, productData) => {
     body: JSON.stringify(productData)
   });
 
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.message || "No se pudo actualizar el producto");
-  }
-
-  return data;
+  return handleResponse(response, "Error al actualizar producto");
 };
 
-export const updateProductStock = async (productId, stock) => {
+export const updateProductStock = async (productId, stockData) => {
   const response = await fetch(`${API_URL}/products/${productId}/stock`, {
     method: "PATCH",
     headers: getAuthHeaders(),
-    body: JSON.stringify({ stock })
+    body: JSON.stringify(stockData)
   });
 
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.message || "No se pudo actualizar el stock");
-  }
-
-  return data;
+  return handleResponse(response, "Error al actualizar stock del producto");
 };
 
 export const deactivateProduct = async (productId) => {
@@ -155,14 +160,12 @@ export const deactivateProduct = async (productId) => {
     headers: getAuthHeaders()
   });
 
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.message || "No se pudo desactivar el producto");
-  }
-
-  return data;
+  return handleResponse(response, "Error al desactivar producto");
 };
+
+// ==========================
+// PEDIDOS
+// ==========================
 
 export const createOrder = async (orderData) => {
   const response = await fetch(`${API_URL}/orders`, {
@@ -171,13 +174,7 @@ export const createOrder = async (orderData) => {
     body: JSON.stringify(orderData)
   });
 
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.message || "No se pudo generar el pedido");
-  }
-
-  return data;
+  return handleResponse(response, "Error al generar pedido");
 };
 
 export const getMyOrders = async () => {
@@ -186,11 +183,5 @@ export const getMyOrders = async () => {
     headers: getAuthHeaders()
   });
 
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.message || "No se pudieron obtener tus pedidos");
-  }
-
-  return data;
+  return handleResponse(response, "Error al obtener pedidos del usuario");
 };

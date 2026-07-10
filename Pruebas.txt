@@ -1,3 +1,7 @@
 http://localhost:5173/carrito
 
 http://localhost:5173/catalogo
+
+CUENTA ADMIN: 
+    Email: admin@farmacia.cl
+    Contraseña:   Admin123456
