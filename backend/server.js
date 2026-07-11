@@ -1,15 +1,19 @@
-import "dotenv/config";
 import app from "./src/app.js";
-import express from 'express';
-import cors from 'cors';
-
-app.use(cors({
-  origin: process.env.FRONTEND_URL
-}))
-
-app.use(express.json());
+import { connectDB } from "./src/config/db.js";
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Servidor ejecutándose en puerto ${PORT}`);
-});
+
+const startServer = async () => {
+  try {
+    await connectDB();
+
+    app.listen(PORT, () => {
+      console.log(`Servidor ejecutándose en puerto ${PORT}`);
+    });
+  } catch (error) {
+    console.error("Error al iniciar el servidor:", error.message);
+    process.exit(1);
+  }
+};
+
+startServer();
