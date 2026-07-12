@@ -1,3 +1,28 @@
+/**
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * Archivo: AdminDashboard.jsx
+ * Descripción:
+ * Página de administración encargada de gestionar el catálogo
+ * de medicamentos del sistema VidaSalud. Permite visualizar,
+ * crear, editar, activar y desactivar productos registrados
+ * en la base de datos.
+ *
+ * Funcionalidades:
+ * - Carga de productos desde el backend.
+ * - Visualización de estadísticas del catálogo.
+ * - Registro de nuevos productos.
+ * - Edición de productos existentes.
+ * - Activación y desactivación de productos.
+ * - Validación de formularios.
+ * - Administración del inventario.
+ *
+ * Dependencias:
+ * - React: Manejo de estados, efectos y optimización.
+ * - api service: Comunicación con el backend.
+ *
+ * Autor: Equipo VidaSalud
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ */
 import { useEffect, useMemo, useState } from "react";
 import {
   createProduct,
@@ -6,6 +31,9 @@ import {
   updateProduct
 } from "../services/api";
 
+/**
+ * Estado inicial utilizado por el formulario de productos.
+ */
 const initialForm = {
   codigo: "",
   nombre: "",
@@ -18,15 +46,38 @@ const initialForm = {
   requiereReceta: false
 };
 
+/**
+ * Renderiza el panel de administración.
+ *
+ * Permite gestionar completamente los productos del catálogo,
+ * incluyendo operaciones de creación, edición, activación,
+ * desactivación y consulta de estadísticas.
+ *
+ * @returns {JSX.Element}
+ */
 const AdminDashboard = () => {
+  // Lista de productos registrados.
   const [products, setProducts] = useState([]);
+  // Datos del formulario de creación o edición.
   const [formData, setFormData] = useState(initialForm);
+  // Identificador del producto que se encuentra en edición.
   const [editingId, setEditingId] = useState(null);
+  // Controla la carga inicial de productos.
   const [loadingProducts, setLoadingProducts] = useState(true);
+  // Controla el estado durante el guardado.
   const [saving, setSaving] = useState(false);
+  // Mensajes informativos.
   const [message, setMessage] = useState("");
+  // Mensajes de error.
   const [error, setError] = useState("");
 
+  /**
+   * Obtiene los productos registrados desde el backend.
+   *
+   * Actualiza la lista mostrada en el panel administrativo.
+   *
+   * @async
+   */
   const loadProducts = async () => {
     try {
       setLoadingProducts(true);
@@ -42,10 +93,23 @@ const AdminDashboard = () => {
     }
   };
 
+  /**
+   * Carga los productos al iniciar el componente.
+   */
   useEffect(() => {
     loadProducts();
   }, []);
 
+  /**
+   * Calcula estadísticas generales del catálogo.
+   *
+   * Genera información resumida como:
+   * - Total de productos.
+   * - Productos activos.
+   * - Productos inactivos.
+   * - Stock total.
+   * - Productos sin stock.
+   */
   const stats = useMemo(() => {
     const totalProducts = products.length;
 
@@ -70,6 +134,14 @@ const AdminDashboard = () => {
     };
   }, [products]);
 
+  /**
+   * Actualiza los datos del formulario.
+   *
+   * Soporta campos de texto, numéricos y casillas
+   * de verificación.
+   *
+   * @param {React.ChangeEvent<HTMLInputElement>} event
+   */
   const handleChange = (event) => {
     const { name, value, type, checked } = event.target;
 
@@ -79,11 +151,22 @@ const AdminDashboard = () => {
     });
   };
 
+  /**
+   * Restablece el formulario a su estado inicial
+   * y finaliza el modo edición.
+   */
   const resetForm = () => {
     setFormData(initialForm);
     setEditingId(null);
   };
 
+  /**
+   * Valida los datos ingresados en el formulario.
+   *
+   * Verifica campos obligatorios y valores numéricos.
+   *
+   * @returns {string} Mensaje de error o cadena vacía.
+   */
   const validateForm = () => {
     if (!formData.codigo.trim()) {
       return "El código es obligatorio.";
@@ -112,6 +195,14 @@ const AdminDashboard = () => {
     return "";
   };
 
+  /**
+   * Construye el objeto que será enviado al backend.
+   *
+   * Convierte los datos ingresados al formato esperado
+   * por la API.
+   *
+   * @returns {Object}
+   */
   const buildProductPayload = () => {
     const payload = {
       codigo: formData.codigo.trim(),
@@ -131,6 +222,15 @@ const AdminDashboard = () => {
     return payload;
   };
 
+  /**
+   * Procesa el envío del formulario.
+   *
+   * Dependiendo del estado actual, crea un nuevo
+   * producto o actualiza uno existente.
+   *
+   * @async
+   * @param {React.FormEvent<HTMLFormElement>} event
+   */
   const handleSubmit = async (event) => {
     event.preventDefault();
 
@@ -165,6 +265,12 @@ const AdminDashboard = () => {
     }
   };
 
+  /**
+   * Carga la información de un producto en el formulario
+   * para permitir su edición.
+   *
+   * @param {Object} product Producto seleccionado.
+   */
   const handleEdit = (product) => {
     setEditingId(product._id);
 
@@ -186,6 +292,14 @@ const AdminDashboard = () => {
     });
   };
 
+  /**
+   * Desactiva un producto del catálogo.
+   *
+   * Solicita confirmación antes de realizar la operación.
+   *
+   * @async
+   * @param {string} productId Identificador del producto.
+   */
   const handleDeactivate = async (productId) => {
     const confirmAction = window.confirm(
       "¿Seguro que deseas desactivar este producto?"
@@ -208,6 +322,12 @@ const AdminDashboard = () => {
     }
   };
 
+  /**
+   * Activa nuevamente un producto previamente desactivado.
+   *
+   * @async
+   * @param {string} productId Identificador del producto.
+   */
   const handleActivate = async (productId) => {
     try {
       setError("");
@@ -226,6 +346,7 @@ const AdminDashboard = () => {
 
   return (
     <section className="admin-page">
+      {/* Encabezado del panel administrativo */}
       <div className="section-header">
         <span className="hero-label">Panel administrador</span>
         <h2>Gestión de productos</h2>
@@ -234,6 +355,7 @@ const AdminDashboard = () => {
         </p>
       </div>
 
+      {/* Tarjetas con estadísticas generales */}
       <div className="admin-grid">
         <article className="stat-card">
           <span>Total productos</span>
@@ -261,10 +383,12 @@ const AdminDashboard = () => {
         </article>
       </div>
 
+      {/* Mensajes informativos y de error */}
       {message && <p className="alert-success">{message}</p>}
       {error && <p className="alert-error">{error}</p>}
 
       <div className="admin-layout">
+        {/* Formulario para crear o editar productos */}
         <form className="admin-form-card" onSubmit={handleSubmit}>
           <h3>{editingId ? "Editar producto" : "Crear producto"}</h3>
 
@@ -391,6 +515,7 @@ const AdminDashboard = () => {
           </div>
         </form>
 
+        {/* Tabla con los productos registrados */}
         <div className="admin-products-card">
           <h3>Productos registrados</h3>
 
