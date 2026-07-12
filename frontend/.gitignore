@@ -1,3 +1,20 @@
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Archivo: .gitignore
+# Descripción:
+# Define los archivos y directorios que Git debe ignorar
+# para evitar subir dependencias, archivos generados
+# automáticamente y configuraciones locales del entorno.
+#
+# Elementos ignorados:
+# - node_modules: Dependencias instaladas mediante npm.
+# - dist: Archivos generados durante la compilación.
+# - .env: Variables de entorno del proyecto.
+# - .env.local: Configuración local de desarrollo.
+# - .env.production: Variables de entorno para producción.
+# - .DS_Store: Archivo generado automáticamente por macOS.
+#
+# Autor: Equipo VidaSalud
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 node_modules
 dist
 .env
