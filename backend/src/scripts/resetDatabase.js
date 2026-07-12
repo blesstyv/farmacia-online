@@ -1,3 +1,34 @@
+/**
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * Archivo: resetDatabase.js
+ * Descripción:
+ * Script encargado de reiniciar la base de datos de la
+ * Farmacia Online VidaSalud.
+ *
+ * El proceso elimina los pedidos, restablece los productos
+ * iniciales, elimina los usuarios de prueba y garantiza
+ * la existencia de un usuario administrador.
+ *
+ * Este script está pensado para facilitar las pruebas
+ * y el desarrollo del sistema.
+ *
+ * Dependencias:
+ * - dotenv/config: Carga las variables de entorno.
+ * - bcryptjs: Cifra la contraseña del administrador.
+ * - mongoose: Gestiona la conexión con MongoDB.
+ * - db.js: Establece la conexión con la base de datos.
+ * - User.js: Modelo de usuarios.
+ * - Product.js: Modelo de productos.
+ * - Order.js: Modelo de pedidos.
+ *
+ * Variables de entorno:
+ * - ADMIN_NAME
+ * - ADMIN_EMAIL
+ * - ADMIN_PASSWORD
+ *
+ * Autor: Equipo VidaSalud
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ */
 import "dotenv/config";
 import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
@@ -6,6 +37,13 @@ import User from "../models/User.js";
 import Product from "../models/Product.js";
 import Order from "../models/Order.js";
 
+/**
+ * Catálogo inicial de productos utilizado para poblar
+ * la base de datos después del reinicio.
+ *
+ * Los productos son simulados y se utilizan únicamente
+ * con fines académicos y de prueba.
+ */
 const initialProducts = [
   {
     codigo: "MED-001",
@@ -153,30 +191,49 @@ const initialProducts = [
   }
 ];
 
+/**
+ * Reinicia la base de datos del sistema.
+ *
+ * Elimina la información de prueba, restablece el
+ * usuario administrador e inserta nuevamente el
+ * catálogo inicial de productos.
+ *
+ * @async
+ * @returns {Promise<void>}
+ */
+
 const resetDatabase = async () => {
   try {
+    // Establece la conexión con la base de datos.
     await connectDB();
 
     console.log("Iniciando limpieza de base de datos...");
 
+    // Elimina todos los pedidos registrados.
     await Order.deleteMany({});
     console.log("Pedidos y boletas simuladas eliminados.");
 
+    // Elimina todos los productos existentes.
     await Product.deleteMany({});
     console.log("Productos anteriores eliminados.");
 
+    // Elimina únicamente los usuarios con rol de cliente.
     await User.deleteMany({
       role: "cliente"
     });
     console.log("Usuarios cliente de prueba eliminados.");
 
+    // Obtiene los datos del administrador desde las variables de entorno.
     const adminName = process.env.ADMIN_NAME || "Administrador Farmacia";
     const adminEmail = process.env.ADMIN_EMAIL || "admin@farmacia.cl";
     const adminPassword = process.env.ADMIN_PASSWORD || "Admin123456";
 
+    // Normaliza el correo electrónico del administrador.
     const normalizedAdminEmail = adminEmail.toLowerCase().trim();
+    // Cifra la contraseña del administrador.
     const hashedPassword = await bcrypt.hash(adminPassword, 10);
 
+    // Crea o actualiza el usuario administrador.
     await User.findOneAndUpdate(
       {
         email: normalizedAdminEmail
@@ -189,6 +246,7 @@ const resetDatabase = async () => {
         activo: true
       },
       {
+        // Si el administrador no existe, lo crea automáticamente.
         upsert: true,
         new: true,
         runValidators: true
@@ -197,24 +255,31 @@ const resetDatabase = async () => {
 
     console.log("Administrador listo.");
 
+    // Inserta el catálogo inicial de productos.
     await Product.insertMany(initialProducts);
     console.log(`${initialProducts.length} productos iniciales insertados.`);
 
     console.log("Base de datos reiniciada correctamente.");
+    // Muestra un resumen del proceso realizado.
     console.log("Resumen:");
     console.log("- Pedidos: 0");
     console.log("- Boletas simuladas: 0");
     console.log(`- Productos: ${initialProducts.length}`);
     console.log(`- Administrador: ${normalizedAdminEmail}`);
 
+    // Cierra la conexión con la base de datos.
     await mongoose.connection.close();
     process.exit(0);
   } catch (error) {
+    // Muestra el error ocurrido durante el proceso.
     console.error("Error al reiniciar base de datos:", error.message);
 
+    // Cierra la conexión antes de finalizar el script.
     await mongoose.connection.close();
+    // Finaliza el proceso indicando que ocurrió un error.
     process.exit(1);
   }
 };
 
+// Ejecuta el proceso de reinicio de la base de datos.
 resetDatabase();
