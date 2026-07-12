@@ -1,5 +1,23 @@
+# ==========================================================
+# Archivo: .gitignore
+# Descripción:
+# Define los archivos y carpetas que Git no debe incluir
+# en el control de versiones.
+#
+# Autor: Equipo VidaSalud
+# ==========================================================
+
+# Dependencias instaladas mediante npm.
 node_modules
+
+# Variables de entorno con información sensible.
 .env
+
+# Archivos generados durante el despliegue en Vercel.
 .vercel
+
+# Archivos compilados de producción.
 dist
+
+# Archivo generado automáticamente por macOS.
 .DS_Store
