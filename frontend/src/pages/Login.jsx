@@ -147,6 +147,7 @@ const Login = () => {
           onChange={handleChange}
         />
 
+        {/* Botón de envío que se bloquea durante la carga para evitar clics múltiples */}
         <button type="submit" className="btn-primary full" disabled={loading}>
           {loading ? "Ingresando..." : "Entrar"}
         </button>

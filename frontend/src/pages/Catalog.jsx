@@ -34,8 +34,6 @@
  */
  
 
-
-
 // Importa hooks de React para manejar estado, efectos y cálculos memorizados.
 import { useEffect, useMemo, useState } from "react";
 
@@ -78,6 +76,7 @@ const normalizeText = (text = "") => {
  * - La imagen viene vacía.
  * - La imagen es un placeholder gris.
  * - La imagen externa falla al cargar.
+ * 
  */
 const createFallbackImage = (
   title = "Medicamento",
