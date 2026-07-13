@@ -16,6 +16,13 @@
  * - Validación de disponibilidad de stock.
  * - Agregar productos al carrito.
  * - Manejo de estados de carga y errores.
+ *  * - Carga los productos desde el backend mediante la función getProducts().
+ * - Muestra los medicamentos obtenidos desde MongoDB Atlas.
+ * - Permite buscar medicamentos por nombre, descripción, categoría o laboratorio.
+ * - Permite filtrar medicamentos por categoría.
+ * - Permite agregar productos al carrito.
+ * - Muestra una imagen real si el producto la tiene.
+ * - Genera una imagen visual de respaldo si el producto no tiene foto válida.
  *
  * Dependencias:
  * - React: Manejo de estados y efectos del componente.
@@ -24,17 +31,9 @@
  *
  * Autor: Equipo VidaSalud
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- 
- *
- * Este componente realiza lo siguiente:
- * - Carga los productos desde el backend mediante la función getProducts().
- * - Muestra los medicamentos obtenidos desde MongoDB Atlas.
- * - Permite buscar medicamentos por nombre, descripción, categoría o laboratorio.
- * - Permite filtrar medicamentos por categoría.
- * - Permite agregar productos al carrito.
- * - Muestra una imagen real si el producto la tiene.
- * - Genera una imagen visual de respaldo si el producto no tiene foto válida.
  */
+ 
+
 
 
 // Importa hooks de React para manejar estado, efectos y cálculos memorizados.
