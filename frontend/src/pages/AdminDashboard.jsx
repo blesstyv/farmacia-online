@@ -22,8 +22,10 @@
  *
  * Autor: Equipo VidaSalud
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- */
-import { useEffect, useMemo, useState } from "react";
+  */
+
+import { useEffect, useMemo, useRef, useState } from "react";
+
 import {
   createProduct,
   deactivateProduct,
@@ -31,8 +33,10 @@ import {
   updateProduct
 } from "../services/api";
 
+import "./AdminDashboard.css";
+
 /**
- * Estado inicial utilizado por el formulario de productos.
+ * Valores iniciales del formulario.
  */
 const initialForm = {
   codigo: "",
@@ -47,36 +51,82 @@ const initialForm = {
 };
 
 /**
- * Renderiza el panel de administración.
- *
- * Permite gestionar completamente los productos del catálogo,
- * incluyendo operaciones de creación, edición, activación,
- * desactivación y consulta de estadísticas.
- *
- * @returns {JSX.Element}
+ * Imagen SVG utilizada cuando el producto no tiene imagen
+ * o cuando su ruta no se puede cargar.
  */
+const PRODUCT_PLACEHOLDER = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+  <svg xmlns="http://www.w3.org/2000/svg" width="500" height="340" viewBox="0 0 500 340">
+    <rect width="500" height="340" fill="#eef7f3"/>
+    <circle cx="250" cy="135" r="64" fill="#cde7dc"/>
+    <rect x="215" y="92" width="70" height="86" rx="22" fill="#16835f"/>
+    <rect x="215" y="125" width="70" height="20" fill="#ffffff"/>
+    <text
+      x="250"
+      y="245"
+      text-anchor="middle"
+      font-family="Arial, sans-serif"
+      font-size="25"
+      font-weight="700"
+      fill="#31554a"
+    >
+      Sin imagen
+    </text>
+  </svg>
+`)}`;
+
+/**
+ * Formatea números como moneda chilena.
+ */
+const formatCurrency = (value) => {
+  return new Intl.NumberFormat("es-CL", {
+    style: "currency",
+    currency: "CLP",
+    maximumFractionDigits: 0
+  }).format(Number(value) || 0);
+};
+
+/**
+ * Devuelve la imagen del producto o una imagen alternativa.
+ */
+const getProductImage = (product) => {
+  if (product?.imagen && product.imagen.trim()) {
+    return product.imagen.trim();
+  }
+
+  return PRODUCT_PLACEHOLDER;
+};
+
 const AdminDashboard = () => {
-  // Lista de productos registrados.
+  // Listado completo recibido desde el backend.
   const [products, setProducts] = useState([]);
-  // Datos del formulario de creación o edición.
+
+  // Información del formulario.
   const [formData, setFormData] = useState(initialForm);
-  // Identificador del producto que se encuentra en edición.
+
+  // ID del producto seleccionado para editar.
   const [editingId, setEditingId] = useState(null);
-  // Controla la carga inicial de productos.
+
+  // Estados de carga.
   const [loadingProducts, setLoadingProducts] = useState(true);
-  // Controla el estado durante el guardado.
   const [saving, setSaving] = useState(false);
-  // Mensajes informativos.
+  const [processingId, setProcessingId] = useState(null);
+
+  // Mensajes de resultado.
   const [message, setMessage] = useState("");
-  // Mensajes de error.
   const [error, setError] = useState("");
 
+  // Herramientas del inventario.
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("todos");
+  const [categoryFilter, setCategoryFilter] = useState("todas");
+  const [sortOption, setSortOption] = useState("nombre-asc");
+
+  // Permite desplazarse directamente al formulario al editar.
+  const formSectionRef = useRef(null);
+
   /**
-   * Obtiene los productos registrados desde el backend.
-   *
-   * Actualiza la lista mostrada en el panel administrativo.
-   *
-   * @async
+   * Obtiene todos los productos, tanto activos como inactivos,
+   * utilizando la función administrativa existente en api.js.
    */
   const loadProducts = async () => {
     try {
@@ -86,43 +136,42 @@ const AdminDashboard = () => {
       const data = await getAdminProducts();
 
       setProducts(data.products || []);
-    } catch (error) {
-      setError(error.message || "No se pudieron cargar los productos");
+    } catch (requestError) {
+      setError(
+        requestError.message || "No se pudieron cargar los productos."
+      );
     } finally {
       setLoadingProducts(false);
     }
   };
 
   /**
-   * Carga los productos al iniciar el componente.
+   * Carga productos al abrir el panel.
    */
   useEffect(() => {
     loadProducts();
   }, []);
 
   /**
-   * Calcula estadísticas generales del catálogo.
-   *
-   * Genera información resumida como:
-   * - Total de productos.
-   * - Productos activos.
-   * - Productos inactivos.
-   * - Stock total.
-   * - Productos sin stock.
+   * Calcula las estadísticas visibles en la parte superior.
    */
   const stats = useMemo(() => {
     const totalProducts = products.length;
 
-    const activeProducts = products.filter((product) => product.activo).length;
+    const activeProducts = products.filter(
+      (product) => product.activo
+    ).length;
 
-    const inactiveProducts = products.filter((product) => !product.activo).length;
+    const inactiveProducts = products.filter(
+      (product) => !product.activo
+    ).length;
 
     const totalStock = products.reduce((total, product) => {
       return total + Number(product.stock || 0);
     }, 0);
 
     const productsWithoutStock = products.filter((product) => {
-      return product.stock <= 0;
+      return Number(product.stock) <= 0;
     }).length;
 
     return {
@@ -135,25 +184,98 @@ const AdminDashboard = () => {
   }, [products]);
 
   /**
-   * Actualiza los datos del formulario.
-   *
-   * Soporta campos de texto, numéricos y casillas
-   * de verificación.
-   *
-   * @param {React.ChangeEvent<HTMLInputElement>} event
+   * Genera la lista de categorías para el filtro.
+   */
+  const categories = useMemo(() => {
+    return [
+      ...new Set(
+        products
+          .map((product) => product.categoria)
+          .filter(Boolean)
+      )
+    ].sort((categoryA, categoryB) => {
+      return categoryA.localeCompare(categoryB, "es");
+    });
+  }, [products]);
+
+  /**
+   * Filtra y ordena los productos sin solicitar nuevamente
+   * información al backend.
+   */
+  const filteredProducts = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+
+    const result = products.filter((product) => {
+      const matchesSearch =
+        !normalizedSearch ||
+        product.nombre?.toLowerCase().includes(normalizedSearch) ||
+        product.codigo?.toLowerCase().includes(normalizedSearch) ||
+        product.categoria?.toLowerCase().includes(normalizedSearch) ||
+        product.laboratorio?.toLowerCase().includes(normalizedSearch);
+
+      const matchesStatus =
+        statusFilter === "todos" ||
+        (statusFilter === "activos" && product.activo) ||
+        (statusFilter === "inactivos" && !product.activo) ||
+        (
+          statusFilter === "sin-stock" &&
+          Number(product.stock) <= 0
+        );
+
+      const matchesCategory =
+        categoryFilter === "todas" ||
+        product.categoria === categoryFilter;
+
+      return matchesSearch && matchesStatus && matchesCategory;
+    });
+
+    return [...result].sort((productA, productB) => {
+      if (sortOption === "nombre-desc") {
+        return productB.nombre.localeCompare(productA.nombre, "es");
+      }
+
+      if (sortOption === "stock-asc") {
+        return Number(productA.stock) - Number(productB.stock);
+      }
+
+      if (sortOption === "stock-desc") {
+        return Number(productB.stock) - Number(productA.stock);
+      }
+
+      if (sortOption === "precio-asc") {
+        return Number(productA.precio) - Number(productB.precio);
+      }
+
+      if (sortOption === "precio-desc") {
+        return Number(productB.precio) - Number(productA.precio);
+      }
+
+      return productA.nombre.localeCompare(productB.nombre, "es");
+    });
+  }, [
+    products,
+    searchTerm,
+    statusFilter,
+    categoryFilter,
+    sortOption
+  ]);
+
+  /**
+   * Actualiza el formulario.
    */
   const handleChange = (event) => {
     const { name, value, type, checked } = event.target;
 
-    setFormData({
-      ...formData,
-      [name]: type === "checkbox" ? checked : value
+    setFormData((currentForm) => {
+      return {
+        ...currentForm,
+        [name]: type === "checkbox" ? checked : value
+      };
     });
   };
 
   /**
-   * Restablece el formulario a su estado inicial
-   * y finaliza el modo edición.
+   * Restablece el formulario y cancela la edición.
    */
   const resetForm = () => {
     setFormData(initialForm);
@@ -161,11 +283,17 @@ const AdminDashboard = () => {
   };
 
   /**
-   * Valida los datos ingresados en el formulario.
-   *
-   * Verifica campos obligatorios y valores numéricos.
-   *
-   * @returns {string} Mensaje de error o cadena vacía.
+   * Limpia buscador y filtros.
+   */
+  const clearFilters = () => {
+    setSearchTerm("");
+    setStatusFilter("todos");
+    setCategoryFilter("todas");
+    setSortOption("nombre-asc");
+  };
+
+  /**
+   * Valida los datos antes de enviarlos.
    */
   const validateForm = () => {
     if (!formData.codigo.trim()) {
@@ -184,11 +312,17 @@ const AdminDashboard = () => {
       return "La categoría es obligatoria.";
     }
 
-    if (formData.precio === "" || Number(formData.precio) < 0) {
+    if (
+      formData.precio === "" ||
+      Number(formData.precio) < 0
+    ) {
       return "El precio debe ser igual o mayor a cero.";
     }
 
-    if (formData.stock === "" || Number(formData.stock) < 0) {
+    if (
+      formData.stock === "" ||
+      Number(formData.stock) < 0
+    ) {
       return "El stock debe ser igual o mayor a cero.";
     }
 
@@ -196,12 +330,7 @@ const AdminDashboard = () => {
   };
 
   /**
-   * Construye el objeto que será enviado al backend.
-   *
-   * Convierte los datos ingresados al formato esperado
-   * por la API.
-   *
-   * @returns {Object}
+   * Construye el objeto esperado por el backend.
    */
   const buildProductPayload = () => {
     const payload = {
@@ -209,7 +338,8 @@ const AdminDashboard = () => {
       nombre: formData.nombre.trim(),
       descripcion: formData.descripcion.trim(),
       categoria: formData.categoria.trim(),
-      laboratorio: formData.laboratorio.trim() || "No informado",
+      laboratorio:
+        formData.laboratorio.trim() || "No informado",
       precio: Number(formData.precio),
       stock: Number(formData.stock),
       requiereReceta: formData.requiereReceta
@@ -223,21 +353,19 @@ const AdminDashboard = () => {
   };
 
   /**
-   * Procesa el envío del formulario.
+   * Crea o actualiza un producto.
    *
-   * Dependiendo del estado actual, crea un nuevo
-   * producto o actualiza uno existente.
-   *
-   * @async
-   * @param {React.FormEvent<HTMLFormElement>} event
+   * Las llamadas CRUD originales se mantienen:
+   * - createProduct para crear.
+   * - updateProduct para actualizar.
    */
   const handleSubmit = async (event) => {
     event.preventDefault();
 
     try {
       setSaving(true);
-      setError("");
       setMessage("");
+      setError("");
 
       const validationMessage = validateForm();
 
@@ -258,20 +386,22 @@ const AdminDashboard = () => {
 
       resetForm();
       await loadProducts();
-    } catch (error) {
-      setError(error.message || "No se pudo guardar el producto");
+    } catch (requestError) {
+      setError(
+        requestError.message || "No se pudo guardar el producto."
+      );
     } finally {
       setSaving(false);
     }
   };
 
   /**
-   * Carga la información de un producto en el formulario
-   * para permitir su edición.
-   *
-   * @param {Object} product Producto seleccionado.
+   * Carga un producto en el formulario para editarlo.
    */
   const handleEdit = (product) => {
+    setMessage("");
+    setError("");
+
     setEditingId(product._id);
 
     setFormData({
@@ -280,29 +410,24 @@ const AdminDashboard = () => {
       descripcion: product.descripcion || "",
       categoria: product.categoria || "",
       laboratorio: product.laboratorio || "",
-      precio: product.precio || "",
-      stock: product.stock || "",
+      precio: product.precio ?? "",
+      stock: product.stock ?? "",
       imagen: product.imagen || "",
       requiereReceta: Boolean(product.requiereReceta)
     });
 
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth"
+    formSectionRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
     });
   };
 
   /**
-   * Desactiva un producto del catálogo.
-   *
-   * Solicita confirmación antes de realizar la operación.
-   *
-   * @async
-   * @param {string} productId Identificador del producto.
+   * Desactiva lógicamente un producto.
    */
-  const handleDeactivate = async (productId) => {
+  const handleDeactivate = async (product) => {
     const confirmAction = window.confirm(
-      "¿Seguro que deseas desactivar este producto?"
+      `¿Seguro que deseas desactivar "${product.nombre}"?`
     );
 
     if (!confirmAction) {
@@ -310,294 +435,605 @@ const AdminDashboard = () => {
     }
 
     try {
-      setError("");
+      setProcessingId(product._id);
       setMessage("");
+      setError("");
 
-      await deactivateProduct(productId);
+      await deactivateProduct(product._id);
 
-      setMessage("Producto desactivado correctamente.");
+      setMessage(
+        `El producto "${product.nombre}" fue desactivado correctamente.`
+      );
+
       await loadProducts();
-    } catch (error) {
-      setError(error.message || "No se pudo desactivar el producto");
+    } catch (requestError) {
+      setError(
+        requestError.message ||
+          "No se pudo desactivar el producto."
+      );
+    } finally {
+      setProcessingId(null);
     }
   };
 
   /**
-   * Activa nuevamente un producto previamente desactivado.
-   *
-   * @async
-   * @param {string} productId Identificador del producto.
+   * Reactiva un producto previamente desactivado.
    */
-  const handleActivate = async (productId) => {
+  const handleActivate = async (product) => {
     try {
-      setError("");
+      setProcessingId(product._id);
       setMessage("");
+      setError("");
 
-      await updateProduct(productId, {
+      await updateProduct(product._id, {
         activo: true
       });
 
-      setMessage("Producto activado correctamente.");
+      setMessage(
+        `El producto "${product.nombre}" fue activado correctamente.`
+      );
+
       await loadProducts();
-    } catch (error) {
-      setError(error.message || "No se pudo activar el producto");
+    } catch (requestError) {
+      setError(
+        requestError.message ||
+          "No se pudo activar el producto."
+      );
+    } finally {
+      setProcessingId(null);
     }
   };
 
   return (
-    <section className="admin-page">
-      {/* Encabezado del panel administrativo */}
-      <div className="section-header">
-        <span className="hero-label">Panel administrador</span>
-        <h2>Gestión de productos</h2>
-        <p>
-          Administra el catálogo de medicamentos conectado a MongoDB Atlas.
-        </p>
-      </div>
+    <section className="admin-dashboard-page">
+      <div className="admin-dashboard-container">
+        <header className="admin-dashboard-header">
+          <div>
+            <span className="admin-header-label">
+              Panel administrador
+            </span>
 
-      {/* Tarjetas con estadísticas generales */}
-      <div className="admin-grid">
-        <article className="stat-card">
-          <span>Total productos</span>
-          <strong>{stats.totalProducts}</strong>
-        </article>
+            <h1>Gestión de productos</h1>
 
-        <article className="stat-card">
-          <span>Productos activos</span>
-          <strong>{stats.activeProducts}</strong>
-        </article>
-
-        <article className="stat-card">
-          <span>Stock total</span>
-          <strong>{stats.totalStock}</strong>
-        </article>
-
-        <article className="stat-card">
-          <span>Sin stock</span>
-          <strong>{stats.productsWithoutStock}</strong>
-        </article>
-
-        <article className="stat-card">
-          <span>Desactivados</span>
-          <strong>{stats.inactiveProducts}</strong>
-        </article>
-      </div>
-
-      {/* Mensajes informativos y de error */}
-      {message && <p className="alert-success">{message}</p>}
-      {error && <p className="alert-error">{error}</p>}
-
-      <div className="admin-layout">
-        {/* Formulario para crear o editar productos */}
-        <form className="admin-form-card" onSubmit={handleSubmit}>
-          <h3>{editingId ? "Editar producto" : "Crear producto"}</h3>
-
-          <div className="form-grid">
-            <label>
-              Código
-              <input
-                type="text"
-                name="codigo"
-                placeholder="MED-013"
-                value={formData.codigo}
-                onChange={handleChange}
-              />
-            </label>
-
-            <label>
-              Nombre
-              <input
-                type="text"
-                name="nombre"
-                placeholder="Nombre del medicamento"
-                value={formData.nombre}
-                onChange={handleChange}
-              />
-            </label>
-
-            <label>
-              Categoría
-              <input
-                type="text"
-                name="categoria"
-                placeholder="Analgésicos"
-                value={formData.categoria}
-                onChange={handleChange}
-              />
-            </label>
-
-            <label>
-              Laboratorio
-              <input
-                type="text"
-                name="laboratorio"
-                placeholder="Laboratorio"
-                value={formData.laboratorio}
-                onChange={handleChange}
-              />
-            </label>
-
-            <label>
-              Precio
-              <input
-                type="number"
-                name="precio"
-                min="0"
-                placeholder="1990"
-                value={formData.precio}
-                onChange={handleChange}
-              />
-            </label>
-
-            <label>
-              Stock
-              <input
-                type="number"
-                name="stock"
-                min="0"
-                placeholder="30"
-                value={formData.stock}
-                onChange={handleChange}
-              />
-            </label>
+            <p>
+              Administra el catálogo, los precios, el stock y el
+              estado de los medicamentos almacenados en MongoDB Atlas.
+            </p>
           </div>
 
-          <label>
-            Imagen URL
-            <input
-              type="text"
-              name="imagen"
-              placeholder="https://placehold.co/400x300?text=Medicamento"
-              value={formData.imagen}
-              onChange={handleChange}
-            />
-          </label>
+          <button
+            type="button"
+            className="admin-refresh-button"
+            onClick={loadProducts}
+            disabled={loadingProducts}
+          >
+            {loadingProducts ? "Actualizando..." : "Actualizar listado"}
+          </button>
+        </header>
 
-          <label>
-            Descripción
-            <textarea
-              name="descripcion"
-              placeholder="Descripción del producto"
-              value={formData.descripcion}
-              onChange={handleChange}
-              rows="4"
-            />
-          </label>
+        <div className="admin-stats-grid">
+          <article className="admin-stat-card">
+            <span className="admin-stat-icon">📦</span>
+            <div>
+              <span>Total de productos</span>
+              <strong>{stats.totalProducts}</strong>
+            </div>
+          </article>
 
-          <label className="checkbox-field">
-            <input
-              type="checkbox"
-              name="requiereReceta"
-              checked={formData.requiereReceta}
-              onChange={handleChange}
-            />
-            Requiere receta
-          </label>
+          <article className="admin-stat-card">
+            <span className="admin-stat-icon">✅</span>
+            <div>
+              <span>Productos activos</span>
+              <strong>{stats.activeProducts}</strong>
+            </div>
+          </article>
 
-          <div className="admin-form-actions">
-            <button type="submit" className="btn-primary" disabled={saving}>
-              {saving
-                ? "Guardando..."
-                : editingId
-                  ? "Actualizar producto"
-                  : "Crear producto"}
-            </button>
+          <article className="admin-stat-card">
+            <span className="admin-stat-icon">📊</span>
+            <div>
+              <span>Stock total</span>
+              <strong>{stats.totalStock}</strong>
+            </div>
+          </article>
 
-            {editingId && (
+          <article className="admin-stat-card admin-stat-warning">
+            <span className="admin-stat-icon">⚠️</span>
+            <div>
+              <span>Productos sin stock</span>
+              <strong>{stats.productsWithoutStock}</strong>
+            </div>
+          </article>
+
+          <article className="admin-stat-card admin-stat-muted">
+            <span className="admin-stat-icon">⏸️</span>
+            <div>
+              <span>Desactivados</span>
+              <strong>{stats.inactiveProducts}</strong>
+            </div>
+          </article>
+        </div>
+
+        <div
+          className="admin-messages"
+          aria-live="polite"
+        >
+          {message && (
+            <div className="admin-alert admin-alert-success">
+              <span>✓</span>
+              <p>{message}</p>
+            </div>
+          )}
+
+          {error && (
+            <div className="admin-alert admin-alert-error">
+              <span>!</span>
+              <p>{error}</p>
+            </div>
+          )}
+        </div>
+
+        <div className="admin-workspace">
+          <aside
+            className="admin-form-panel"
+            ref={formSectionRef}
+          >
+            <div className="admin-panel-heading">
+              <div>
+                <span className="admin-section-label">
+                  {editingId ? "Modo edición" : "Nuevo registro"}
+                </span>
+
+                <h2>
+                  {editingId
+                    ? "Editar producto"
+                    : "Crear producto"}
+                </h2>
+              </div>
+
+              {editingId && (
+                <span className="admin-editing-badge">
+                  Editando
+                </span>
+              )}
+            </div>
+
+            <form
+              className="admin-product-form"
+              onSubmit={handleSubmit}
+            >
+              <div className="admin-form-grid">
+                <label className="admin-field">
+                  <span>Código *</span>
+                  <input
+                    type="text"
+                    name="codigo"
+                    value={formData.codigo}
+                    onChange={handleChange}
+                    placeholder="Ejemplo: MED-001"
+                    required
+                  />
+                </label>
+
+                <label className="admin-field">
+                  <span>Nombre *</span>
+                  <input
+                    type="text"
+                    name="nombre"
+                    value={formData.nombre}
+                    onChange={handleChange}
+                    placeholder="Nombre del medicamento"
+                    required
+                  />
+                </label>
+
+                <label className="admin-field">
+                  <span>Categoría *</span>
+                  <input
+                    type="text"
+                    name="categoria"
+                    value={formData.categoria}
+                    onChange={handleChange}
+                    placeholder="Ejemplo: Analgésicos"
+                    required
+                  />
+                </label>
+
+                <label className="admin-field">
+                  <span>Laboratorio</span>
+                  <input
+                    type="text"
+                    name="laboratorio"
+                    value={formData.laboratorio}
+                    onChange={handleChange}
+                    placeholder="Nombre del laboratorio"
+                  />
+                </label>
+
+                <label className="admin-field">
+                  <span>Precio *</span>
+                  <input
+                    type="number"
+                    name="precio"
+                    value={formData.precio}
+                    onChange={handleChange}
+                    min="0"
+                    step="1"
+                    placeholder="0"
+                    required
+                  />
+                </label>
+
+                <label className="admin-field">
+                  <span>Stock *</span>
+                  <input
+                    type="number"
+                    name="stock"
+                    value={formData.stock}
+                    onChange={handleChange}
+                    min="0"
+                    step="1"
+                    placeholder="0"
+                    required
+                  />
+                </label>
+
+                <label className="admin-field admin-field-full">
+                  <span>Imagen URL</span>
+                  <input
+                    type="text"
+                    name="imagen"
+                    value={formData.imagen}
+                    onChange={handleChange}
+                    placeholder="/productos/paracetamol-500mg.png"
+                  />
+                  <small>
+                    Utiliza una ruta de la carpeta
+                    frontend/public/productos.
+                  </small>
+                </label>
+
+                <label className="admin-field admin-field-full">
+                  <span>Descripción *</span>
+                  <textarea
+                    name="descripcion"
+                    value={formData.descripcion}
+                    onChange={handleChange}
+                    rows="5"
+                    placeholder="Descripción breve del medicamento"
+                    required
+                  />
+                </label>
+
+                <label className="admin-checkbox-card admin-field-full">
+                  <input
+                    type="checkbox"
+                    name="requiereReceta"
+                    checked={formData.requiereReceta}
+                    onChange={handleChange}
+                  />
+
+                  <span className="admin-checkbox-visual" />
+
+                  <span>
+                    <strong>Requiere receta</strong>
+                    <small>
+                      Marca esta opción para identificar medicamentos
+                      que requieren receta.
+                    </small>
+                  </span>
+                </label>
+              </div>
+
+              {formData.imagen.trim() && (
+                <div className="admin-form-image-preview">
+                  <span>Vista previa</span>
+
+                  <img
+                    src={formData.imagen}
+                    alt="Vista previa del producto"
+                    onError={(event) => {
+                      event.currentTarget.src = PRODUCT_PLACEHOLDER;
+                    }}
+                  />
+                </div>
+              )}
+
+              <div className="admin-form-actions">
+                <button
+                  type="submit"
+                  className="admin-button admin-button-primary"
+                  disabled={saving}
+                >
+                  {saving
+                    ? "Guardando..."
+                    : editingId
+                      ? "Actualizar producto"
+                      : "Crear producto"}
+                </button>
+
+                {editingId && (
+                  <button
+                    type="button"
+                    className="admin-button admin-button-secondary"
+                    onClick={resetForm}
+                    disabled={saving}
+                  >
+                    Cancelar edición
+                  </button>
+                )}
+              </div>
+            </form>
+          </aside>
+
+          <main className="admin-inventory-panel">
+            <div className="admin-inventory-heading">
+              <div>
+                <span className="admin-section-label">
+                  Inventario
+                </span>
+
+                <h2>Productos registrados</h2>
+
+                <p>
+                  Se muestran {filteredProducts.length} de{" "}
+                  {products.length} productos.
+                </p>
+              </div>
+            </div>
+
+            <div className="admin-toolbar">
+              <label className="admin-search-field">
+                <span>Buscar producto</span>
+                <input
+                  type="search"
+                  value={searchTerm}
+                  onChange={(event) => {
+                    setSearchTerm(event.target.value);
+                  }}
+                  placeholder="Nombre, código, categoría..."
+                />
+              </label>
+
+              <label className="admin-filter-field">
+                <span>Estado</span>
+                <select
+                  value={statusFilter}
+                  onChange={(event) => {
+                    setStatusFilter(event.target.value);
+                  }}
+                >
+                  <option value="todos">Todos</option>
+                  <option value="activos">Activos</option>
+                  <option value="inactivos">Inactivos</option>
+                  <option value="sin-stock">Sin stock</option>
+                </select>
+              </label>
+
+              <label className="admin-filter-field">
+                <span>Categoría</span>
+                <select
+                  value={categoryFilter}
+                  onChange={(event) => {
+                    setCategoryFilter(event.target.value);
+                  }}
+                >
+                  <option value="todas">
+                    Todas las categorías
+                  </option>
+
+                  {categories.map((category) => (
+                    <option
+                      key={category}
+                      value={category}
+                    >
+                      {category}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="admin-filter-field">
+                <span>Ordenar</span>
+                <select
+                  value={sortOption}
+                  onChange={(event) => {
+                    setSortOption(event.target.value);
+                  }}
+                >
+                  <option value="nombre-asc">
+                    Nombre A–Z
+                  </option>
+                  <option value="nombre-desc">
+                    Nombre Z–A
+                  </option>
+                  <option value="stock-asc">
+                    Menor stock
+                  </option>
+                  <option value="stock-desc">
+                    Mayor stock
+                  </option>
+                  <option value="precio-asc">
+                    Menor precio
+                  </option>
+                  <option value="precio-desc">
+                    Mayor precio
+                  </option>
+                </select>
+              </label>
+
               <button
                 type="button"
-                className="btn-secondary"
-                onClick={resetForm}
+                className="admin-clear-filters"
+                onClick={clearFilters}
               >
-                Cancelar edición
+                Limpiar filtros
               </button>
-            )}
-          </div>
-        </form>
+            </div>
 
-        {/* Tabla con los productos registrados */}
-        <div className="admin-products-card">
-          <h3>Productos registrados</h3>
+            {loadingProducts ? (
+              <div className="admin-loading-state">
+                <div className="admin-loader" />
+                <p>Cargando productos...</p>
+              </div>
+            ) : filteredProducts.length === 0 ? (
+              <div className="admin-empty-state">
+                <span>🔎</span>
+                <h3>No se encontraron productos</h3>
+                <p>
+                  Prueba cambiando el texto de búsqueda o los filtros.
+                </p>
 
-          {loadingProducts ? (
-            <p>Cargando productos...</p>
-          ) : (
-            <div className="admin-table-wrapper">
-              <table className="admin-products-table">
-                <thead>
-                  <tr>
-                    <th>Código</th>
-                    <th>Producto</th>
-                    <th>Categoría</th>
-                    <th>Precio</th>
-                    <th>Stock</th>
-                    <th>Estado</th>
-                    <th>Acciones</th>
-                  </tr>
-                </thead>
+                <button
+                  type="button"
+                  className="admin-button admin-button-secondary"
+                  onClick={clearFilters}
+                >
+                  Mostrar todos
+                </button>
+              </div>
+            ) : (
+              <div className="admin-products-grid">
+                {filteredProducts.map((product) => {
+                  const isProcessing =
+                    processingId === product._id;
 
-                <tbody>
-                  {products.map((product) => (
-                    <tr key={product._id}>
-                      <td>{product.codigo}</td>
-                      <td>
-                        <strong>{product.nombre}</strong>
-                        {product.requiereReceta && (
-                          <span className="recipe-chip admin-recipe-chip">
-                            Receta
-                          </span>
-                        )}
-                      </td>
-                      <td>{product.categoria}</td>
-                      <td>${Number(product.precio).toLocaleString("es-CL")}</td>
-                      <td>{product.stock}</td>
-                      <td>
-                        {product.activo ? (
-                          <span className="status-pill active">Activo</span>
-                        ) : (
-                          <span className="status-pill inactive">Inactivo</span>
-                        )}
-                      </td>
-                      <td>
-                        <div className="table-actions">
-                          <button
-                            className="btn-secondary small-btn"
-                            onClick={() => handleEdit(product)}
+                  return (
+                    <article
+                      key={product._id}
+                      className={`admin-product-card ${
+                        !product.activo ? "is-inactive" : ""
+                      }`}
+                    >
+                      <div className="admin-product-image-wrapper">
+                        <img
+                          src={getProductImage(product)}
+                          alt={product.nombre}
+                          className="admin-product-image"
+                          onError={(event) => {
+                            event.currentTarget.src =
+                              PRODUCT_PLACEHOLDER;
+                          }}
+                        />
+
+                        <div className="admin-product-badges">
+                          <span
+                            className={`admin-status-badge ${
+                              product.activo
+                                ? "is-active"
+                                : "is-disabled"
+                            }`}
                           >
-                            Editar
+                            {product.activo
+                              ? "Activo"
+                              : "Inactivo"}
+                          </span>
+
+                          {product.requiereReceta && (
+                            <span className="admin-recipe-badge">
+                              Requiere receta
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="admin-product-content">
+                        <div className="admin-product-title">
+                          <div>
+                            <span className="admin-product-code">
+                              {product.codigo}
+                            </span>
+
+                            <h3>{product.nombre}</h3>
+                          </div>
+                        </div>
+
+                        <p className="admin-product-description">
+                          {product.descripcion ||
+                            "Sin descripción disponible."}
+                        </p>
+
+                        <div className="admin-product-details">
+                          <div>
+                            <span>Categoría</span>
+                            <strong>
+                              {product.categoria || "No informada"}
+                            </strong>
+                          </div>
+
+                          <div>
+                            <span>Laboratorio</span>
+                            <strong>
+                              {product.laboratorio ||
+                                "No informado"}
+                            </strong>
+                          </div>
+
+                          <div>
+                            <span>Precio</span>
+                            <strong className="admin-price-value">
+                              {formatCurrency(product.precio)}
+                            </strong>
+                          </div>
+
+                          <div>
+                            <span>Stock</span>
+                            <strong
+                              className={
+                                Number(product.stock) <= 0
+                                  ? "admin-stock-empty"
+                                  : ""
+                              }
+                            >
+                              {product.stock} unidades
+                            </strong>
+                          </div>
+                        </div>
+
+                        <div className="admin-product-actions">
+                          <button
+                            type="button"
+                            className="admin-button admin-button-edit"
+                            onClick={() => handleEdit(product)}
+                            disabled={isProcessing}
+                          >
+                            Editar producto
                           </button>
 
                           {product.activo ? (
                             <button
-                              className="btn-danger small-btn"
-                              onClick={() => handleDeactivate(product._id)}
+                              type="button"
+                              className="admin-button admin-button-danger"
+                              onClick={() => {
+                                handleDeactivate(product);
+                              }}
+                              disabled={isProcessing}
                             >
-                              Desactivar
+                              {isProcessing
+                                ? "Procesando..."
+                                : "Desactivar"}
                             </button>
                           ) : (
                             <button
-                              className="btn-primary small-btn"
-                              onClick={() => handleActivate(product._id)}
+                              type="button"
+                              className="admin-button admin-button-activate"
+                              onClick={() => {
+                                handleActivate(product);
+                              }}
+                              disabled={isProcessing}
                             >
-                              Activar
+                              {isProcessing
+                                ? "Procesando..."
+                                : "Activar"}
                             </button>
                           )}
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-
-                  {products.length === 0 && (
-                    <tr>
-                      <td colSpan="7">
-                        No hay productos registrados en la base de datos.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </main>
         </div>
       </div>
     </section>
