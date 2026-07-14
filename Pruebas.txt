@@ -5,3 +5,335 @@ http://localhost:5173/catalogo
 CUENTA ADMIN: 
     Email: admin@farmacia.cl
     Contraseña:   Admin123456
+
+===========================================
+
+La estructura mental principal es:
+
+Usuario realiza una acción
+        ↓
+Página o componente React
+        ↓
+Servicio frontend: api.js
+        ↓
+Petición HTTP
+        ↓
+app.js del backend
+        ↓
+Archivo de rutas
+        ↓
+Middleware de seguridad
+        ↓
+Controlador
+        ↓
+Modelo Mongoose
+        ↓
+MongoDB Atlas
+        ↓
+Respuesta JSON
+        ↓
+React actualiza la pantalla
+
+===========================================
+
+control + shift + f y buscar: 
+
+createProduct
+getProducts
+updateProduct
+deactivateProduct
+registerUser
+loginUser
+createOrder
+mongoose.connect
+
+Para buscar un archivo en especifico:
+
+control + p y buscar:
+
+product.controller
+AdminDashboard
+api.js
+Product.js
+
+EJ: En frontend/src/pages/AdminDashboard:
+
+control + f --> buscar "createProduct"
+
+con el cursor encima presionar f12
+te lleva a donde se está usando esa funcion "frontend/src/services/api.js"
+
+Para ver donde se utiliza una funcion, encima de ella presiona:
+
+shift + f12
+
+============================================
+
+Cómo explicar el CRUD completo:
+
+| Letra | Operación          | Método HTTP | Mongoose                               |
+| ----- | ------------------ | ----------- | -------------------------------------- |
+| C     | Create, crear      | POST        | `create()`                             |
+| R     | Read, leer         | GET         | `find()`, `findOne()`, `findById()`    |
+| U     | Update, actualizar | PUT o PATCH | `findByIdAndUpdate()`, `updateOne()`   |
+| D     | Delete, eliminar   | DELETE      | `findByIdAndDelete()` o borrado lógico |
+
+
+En el proyecto el CRUD recorre todos estos archivos:
+
+frontend/src/pages/AdminDashboard.jsx
+frontend/src/pages/Catalog.jsx
+frontend/src/services/api.js
+
+backend/src/app.js
+backend/src/routes/product.routes.js
+backend/src/middlewares/auth.middleware.js
+backend/src/controllers/product.controller.js
+backend/src/models/Product.js
+
+1. CREATE: crear un producto
+
+Formulario del panel administrador
+        ↓
+handleSubmit
+        ↓
+createProduct
+        ↓
+POST /api/products
+        ↓
+protect
+        ↓
+adminOnly
+        ↓
+controlador createProduct
+        ↓
+Product.create
+        ↓
+MongoDB Atlas
+
+“La creación comienza en AdminDashboard.jsx. El formulario ejecuta handleSubmit. Como no existe un editingId, la función llama a createProduct y envía los datos del formulario.”
+
+“La creación real se realiza en product.controller.js. El controlador obtiene los datos desde req.body, valida la información, comprueba que no exista otro producto con el mismo código y utiliza Product.create para guardar el nuevo documento en MongoDB Atlas.”
+
+“El Create comienza en el formulario de AdminDashboard.jsx. handleSubmit valida los campos y, como no existe editingId, llama a createProduct. En api.js se envía un POST a /api/products con JSON y token JWT. app.js dirige la solicitud a product.routes.js. La ruta pasa por protect y adminOnly, y luego ejecuta el controlador createProduct. El controlador valida los datos, comprueba que el código no esté repetido y usa Product.create para insertar el documento en MongoDB Atlas. Finalmente responde con código 201 y el frontend vuelve a cargar la tabla.”
+
+2. READ:
+
+“Cuando el usuario abre el catálogo, useEffect ejecuta la carga inicial. La respuesta del backend se guarda en el estado products y React genera una tarjeta para cada producto.”
+
+“El Read del catálogo comienza en Catalog.jsx. Al cargar el componente, useEffect llama a getProducts. api.js envía un GET a /api/products. La ruta pública ejecuta getProducts y el controlador consulta MongoDB mediante Product.find({ activo: true }). La respuesta vuelve al frontend, se guarda con setProducts y React muestra las tarjetas.”
+
+3. UPDATE:
+
+En AdminDashboard: “Al presionar Editar, handleEdit guarda el ID del producto y carga sus datos en el formulario. Todavía no se actualiza la base de datos.”
+
+LAS DOS FORMAS DE ACTUALIZAR SON: 
+
+PUT: actualizar varios campos del producto.
+PATCH: actualizar solamente el stock.
+
+4. DELETE:
+
+“La eliminación comienza en el botón Desactivar. Primero se pide confirmación y luego se envía el ID del producto al servicio.”
+
+“El Delete del proyecto es un borrado lógico. En AdminDashboard.jsx, el botón Desactivar llama a handleDeactivate, pide confirmación y ejecuta deactivateProduct. api.js envía un DELETE a /api/products/:id. La ruta exige autenticación y rol administrador. El controlador utiliza Product.findByIdAndUpdate para cambiar activo a false. El documento no se elimina de MongoDB. Desaparece del catálogo porque la lectura pública solo busca productos con activo: true.”
+
+===================================================
+
+LA RUTA COMPLETA DE UNA ACCIÓN NORMALMENTE ES:
+
+Página React
+→ api.js
+→ método HTTP y endpoint
+→ archivo de rutas
+→ middleware
+→ controlador
+→ modelo Mongoose
+→ MongoDB Atlas
+→ respuesta al frontend
+
+DONDE SE ENCUENTRA CADA PARTE 
+
+Catalog.jsx
+AdminDashboard.jsx
+Register.jsx
+Login.jsx
+Cart.jsx
+Profile.jsx
+
+LAS ACCIONES USADAS MEDIANTE BOTONES, FORMULARIOS Y FUNCIONES COMO:
+
+handleSubmit
+handleEdit
+handleDeactivate
+handleCreateOrder
+handleAddToCart
+
+services/api.js es el puente entre frontend y backend
+
+DONDE SE ENCUENTRAN:
+
+fetch
+GET
+POST
+PUT
+PATCH
+DELETE
+VITE_API_URL
+Authorization
+
+=======================================================================
+
+app.js = Configura express
+
+DONDE SE ENCUENTRAN:
+
+express.json()
+CORS
+/api/products
+/api/auth
+/api/orders
+/api/health
+
+En los (controllers/) está la lógica principal:
+
+product.controller.js
+auth.controller.js
+order.controller.js
+
+LOS CUALES:
+
+reciben datos;
+validan;
+consultan MongoDB;
+crean o actualizan documentos;
+devuelven respuestas HTTP.
+
+RESUMEN CREATE:
+
+AdminDashboard.jsx
+→ createProduct en api.js
+→ POST /api/products
+→ product.routes.js
+→ protect
+→ adminOnly
+→ createProduct en product.controller.js
+→ Product.create()
+→ MongoDB Atlas
+
+EXPLICACIÓN:
+
+“La creación comienza en el formulario administrativo. El frontend envía un POST con los datos del producto. La ruta valida que el usuario esté autenticado y sea administrador. Luego el controlador valida los campos y usa Product.create para guardar el producto en MongoDB Atlas.”
+
+RESUMEN READ:
+
+(catalogo prublico):
+
+Catalog.jsx
+→ getProducts en api.js
+→ GET /api/products
+→ getProducts controller
+→ Product.find({ activo: true })
+
+EXPLICACIÓN: 
+
+“El catálogo realiza una lectura con GET. El controlador consulta MongoDB mediante Product.find y filtra solo los productos activos.”
+
+(Panel administrador):
+
+AdminDashboard.jsx
+→ getAdminProducts
+→ GET /api/products/admin/all
+→ Product.find()
+
+“El administrador utiliza otra consulta que muestra tanto productos activos como inactivos.”
+
+RESUMEN UPDATE:
+
+AdminDashboard.jsx
+→ handleEdit
+→ editingId
+→ handleSubmit
+→ updateProduct
+→ PUT /api/products/:id
+→ protect
+→ adminOnly
+→ updateProduct controller
+→ Product.findByIdAndUpdate()
+
+EXPLICACIÓN: 
+
+“Al seleccionar Editar, el frontend guarda el ID y carga los datos en el formulario. Cuando se envía, realiza un PUT. El controlador utiliza findByIdAndUpdate para modificar el documento correspondiente.”
+
+RESUMEN DELETE:
+
+AdminDashboard.jsx
+→ handleDeactivate
+→ deactivateProduct
+→ DELETE /api/products/:id
+→ protect
+→ adminOnly
+→ deactivateProduct controller
+→ activo: false
+
+“El proyecto utiliza borrado lógico. La API recibe DELETE, pero el controlador cambia activo a false. El producto sigue almacenado y puede reactivarse.”
+
+REGISTRO DE USUARIOS:
+
+Register.jsx
+→ AuthContext
+→ registerUser en api.js
+→ POST /api/auth/register
+→ auth.routes.js
+→ register en auth.controller.js
+→ User.findOne()
+→ bcrypt.hash()
+→ User.create()
+→ JWT
+→ localStorage
+
+INICIO DE SESIÓN:
+
+Login.jsx
+→ AuthContext
+→ loginUser en api.js
+→ POST /api/auth/login
+→ login controller
+→ User.findOne()
+→ bcrypt.compare()
+→ JWT
+→ localStorage
+
+CREACIÓN DE PEDIDOS:
+
+Cart.jsx
+→ createOrder en api.js
+→ POST /api/orders
+→ order.routes.js
+→ createOrder en order.controller.js
+→ Product.findById()
+→ validación de stock
+→ descuento con $inc
+→ Order.create()
+→ MongoDB Atlas
+
+=============================================================
+
+EJEMPLOS DE FUNCIONES QUE PUEDO BUSCAR:
+
+createProduct
+updateProduct
+deactivateProduct
+getProducts
+registerUser
+loginUser
+createOrder
+mongoose.connect
+jwt.verify
+findByIdAndUpdate
+
+============================================================
+
+ESTRUCTURA DE COMO RESPONDER A CUALQUIER PREGUNTA:
+
+“La acción comienza en [archivo del frontend], dentro de [función]. Después llama a [función de api.js], que envía una petición [método HTTP] a [endpoint]. En el backend, app.js dirige la solicitud a [archivo de rutas]. La ruta pasa por [middlewares] y ejecuta [controlador]. El controlador usa el modelo [Product, User u Order] mediante [método de Mongoose]. Finalmente, MongoDB devuelve el resultado y el frontend actualiza la pantalla.”

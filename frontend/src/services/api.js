@@ -227,7 +227,7 @@ export const getAdminProducts = async () => {
 export const createProduct = async (productData) => {
   const response = await fetch(`${API_URL}/products`, {
     method: "POST",
-    headers: getAuthHeaders(),
+    headers: getAuthHeaders(), //Tokens del JWT
     body: JSON.stringify(productData)
   });
 
